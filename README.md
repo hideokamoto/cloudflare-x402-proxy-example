@@ -11,7 +11,7 @@ A Cloudflare Worker that acts as a transparent proxy with payment-gated access u
 - [/\_\_x402/health](https://x402proxy-template.news.eti.cfdata.org/__x402/health) — public health check (200 OK)
 - [/\_\_x402/protected](https://x402proxy-template.news.eti.cfdata.org/__x402/protected) — protected endpoint (402 Payment Required)
 
-This template also supports **Workers Static Assets** (`public/` with an `ASSETS` binding): after you pay for a matched route such as **`/premium/*`**, responses can come from **`public/premium/1/index.html`** on **`npm run dev`** or on your own **`workers.dev`** URL—with **no DNS origin required** for that demo path. Use the **`purl` CLI** to complete the HTTP 402 flow end-to-end (see [Trying the flow with `purl`](#trying-the-flow-with-purl) and the docs linked in [Quick Start](#quick-start)).
+This template also supports **Workers Static Assets** (`public/` with an `ASSETS` binding): after you pay for a matched route such as **`/premium/*`**, responses can come from **`public/premium/1/index.html`** on **`pnpm run dev`** or on your own **`workers.dev`** URL—with **no DNS origin required** for that demo path. Use the **`purl` CLI** to complete the HTTP 402 flow end-to-end (see [Trying the flow with `purl`](#trying-the-flow-with-purl) and the docs linked in [Quick Start](#quick-start)).
 
 <!-- dash-content-start -->
 
@@ -47,7 +47,7 @@ This proxy is ideal for:
 - ⚡ **Edge Computing** - Runs on Cloudflare Workers at the edge
 - 🔒 **Secure** - HttpOnly, Secure, SameSite cookies
 - 📦 **Lightweight** - Minimal overhead, custom JWT implementation (~2-3 KB)
-- 🧪 **Local & `workers.dev` demos** - With **`ASSETS`** + **`run_worker_first`**, verify x402 locally and after **`npm run deploy`** without routing traffic to an external backend (see **`public/premium/`**)
+- 🧪 **Local & `workers.dev` demos** - With **`ASSETS`** + **`run_worker_first`**, verify x402 locally and after **`pnpm run deploy`** without routing traffic to an external backend (see **`public/premium/`**)
 
 ## Architecture
 
@@ -90,13 +90,13 @@ Get up and running in under a few minutes—**locally** with `wrangler dev`, or 
 ### 1. Dependencies and JWT (local only)
 
 ```bash
-npm install
+pnpm install
 
 # Local JWT only — use `wrangler secret put JWT_SECRET` for deployments (`.dev.vars` is not uploaded)
 cp .dev.vars.example .dev.vars
 node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(32).toString('hex'))" >> .dev.vars
 
-npm run dev
+pnpm run dev
 ```
 
 Visit `http://localhost:8787`:
@@ -119,14 +119,14 @@ The password prompt is for **your local `purl` wallet keystore**, not `JWT_SECRE
 **Guides in this repo:**
 
 - **[`docs/LOCAL_PURL_WALKTHROUGH.md`](docs/LOCAL_PURL_WALKTHROUGH.md)** — step-by-step from `git clone` through `purl` (Japanese; includes mechanical checks for `ASSETS`, `requestForAssetFetch`, and `public/premium/1`)
-- **[`docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md`](docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md)** — short **deploy** walkthrough: `wrangler secret put JWT_SECRET`, `npm run deploy`, `workers.dev`, and `purl` against a live URL (English)
+- **[`docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md`](docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md)** — short **deploy** walkthrough: `wrangler secret put JWT_SECRET`, `pnpm run deploy`, `workers.dev`, and `purl` against a live URL (English)
 
 ### 3. Deploy to Cloudflare Workers (`workers.dev`)
 
 ```bash
 npx wrangler login
 npx wrangler secret put JWT_SECRET   # enter a long random secret (e.g. 32-byte hex)
-npm run deploy
+pnpm run deploy
 ```
 
 Wrangler prints a **`https://<name>.<subdomain>.workers.dev`** URL. Then:
@@ -145,7 +145,7 @@ Protected routes return **500** with `JWT_SECRET not set` until the Worker secre
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- pnpm
 - Cloudflare account (for deployment)
 - A wallet address to receive payments (see [Getting a Wallet Address](#getting-a-wallet-address) below)
 - Testnet tokens for testing payments (get from [CDP Faucet](https://docs.cdp.coinbase.com/faucets/introduction/welcome))
@@ -157,7 +157,7 @@ You need a wallet address (`PAY_TO`) to receive payments. Any Ethereum-compatibl
 ### Installation
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Configuration
@@ -310,7 +310,7 @@ User → api.example.com → x402 Proxy → Origin Worker (via Service Binding)
 Start the development server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 The server will be available at `http://localhost:8787`
@@ -321,20 +321,20 @@ The server will be available at `http://localhost:8787`
 
 | Command          | Description                    |
 | ---------------- | ------------------------------ |
-| `npm run dev`    | Start local development server |
-| `npm run deploy` | Deploy to Cloudflare Workers   |
+| `pnpm run dev`    | Start local development server |
+| `pnpm run deploy` | Deploy to Cloudflare Workers   |
 
 **Other scripts:**
 
 | Command                | Description                                  |
 | ---------------------- | -------------------------------------------- |
-| `npm run cf-typegen`   | Generate TypeScript types from Worker config |
-| `npm run typecheck`    | Run TypeScript type checking                 |
-| `npm run format`       | Format code with Prettier                    |
-| `npm run format:check` | Check code formatting                        |
-| `npm run lint`         | Run all checks (typecheck + format + ESLint) |
-| `npm run lint:fix`     | Auto-fix formatting and linting issues       |
-| `npm run test:client`  | Run automated end-to-end test                |
+| `pnpm run cf-typegen`   | Generate TypeScript types from Worker config |
+| `pnpm run typecheck`    | Run TypeScript type checking                 |
+| `pnpm run format`       | Format code with Prettier                    |
+| `pnpm run format:check` | Check code formatting                        |
+| `pnpm run lint`         | Run all checks (typecheck + format + ESLint) |
+| `pnpm run lint:fix`     | Auto-fix formatting and linting issues       |
+| `pnpm run test:client`  | Run automated end-to-end test                |
 
 ## How It Works
 
@@ -442,7 +442,7 @@ Detailed clone-to-green checks: **[`docs/LOCAL_PURL_WALKTHROUGH.md`](docs/LOCAL_
 Run the automated test client:
 
 ```bash
-PRIVATE_KEY=0x... npm run test:client
+PRIVATE_KEY=0x... pnpm run test:client
 ```
 
 This will:
@@ -473,7 +473,7 @@ curl -v http://localhost:8787/__x402/protected
 3. **Request with payment (requires x402 SDK):**
    See test-client.ts for implementation example
 
-> **Note:** Automated testing with `npm run test:client` requires a funded wallet with testnet tokens. If you're just evaluating the template, the Playwright tests (`pnpm test:e2e x402-proxy-template` from repo root) cover core functionality without requiring payments.
+> **Note:** Automated testing with `pnpm run test:client` requires a funded wallet with testnet tokens. If you're just evaluating the template, the Playwright tests (`pnpm test:e2e x402-proxy-template` from repo root) cover core functionality without requiring payments.
 
 ## Project Structure
 
@@ -625,7 +625,7 @@ For a **Base Sepolia** demo URL you can share or hit from `curl` / **`purl`**:
 
 1. `npx wrangler login`
 2. `npx wrangler secret put JWT_SECRET` (the value is **not** read from `.dev.vars` on Cloudflare—set it explicitly for the Worker)
-3. `npm run deploy`
+3. `pnpm run deploy`
 
 Optional: uncomment `routes` in `wrangler.jsonc` only when you attach your own hostname. For **DNS origin–only** production proxying, you may need to turn off **`assets`** so traffic is not satisfied from `public/` first—see **[`docs/LOCAL_PURL_WALKTHROUGH.md`](docs/LOCAL_PURL_WALKTHROUGH.md)** (Appendix C) and [Proxy Modes](#proxy-modes).
 
@@ -646,7 +646,7 @@ wrangler secret put JWT_SECRET
 3. **Deploy:**
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 ### Environment-Specific Configuration
@@ -662,7 +662,7 @@ The project enforces code quality through:
 - **TypeScript** - Full type safety
 - **ESLint** - Code quality rules
 - **Prettier** - Consistent formatting
-- **Pre-commit checks** - All checks run via `npm run lint`
+- **Pre-commit checks** - All checks run via `pnpm run lint`
 
 ### Adding New Protected Routes
 
@@ -710,13 +710,13 @@ Simply add a new entry to `PROTECTED_PATTERNS` in `wrangler.jsonc`:
 ### Cookie doesn't work
 
 - Check cookie isn't expired (1 hour validity)
-- **Local:** ensure `JWT_SECRET` is set in `.dev.vars` and **`npm run dev`** was restarted after changes
+- **Local:** ensure `JWT_SECRET` is set in `.dev.vars` and **`pnpm run dev`** was restarted after changes
 - **Deployed:** ensure `JWT_SECRET` was uploaded with **`wrangler secret put JWT_SECRET`** for this Worker name
 - Ensure cookie is being sent over **HTTPS** in production (**`Secure` cookie**)
 
 ### TypeScript errors
 
-- Run `npm run cf-typegen` to regenerate types after changing `wrangler.jsonc`
+- Run `pnpm run cf-typegen` to regenerate types after changing `wrangler.jsonc`
 - Check `tsconfig.json` includes correct files
 
 ## Resources

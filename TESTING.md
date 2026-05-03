@@ -17,7 +17,7 @@ Before testing, you need:
 
 3. **The worker running locally**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
 ## Automated Testing
@@ -29,7 +29,7 @@ The easiest way to test is using the provided test client script:
 export PRIVATE_KEY=0x...
 
 # Run the test client
-npm run test:client
+pnpm run test:client
 ```
 
 The test client will:

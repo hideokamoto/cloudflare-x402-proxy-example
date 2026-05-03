@@ -39,13 +39,14 @@
 		"x402": "1.0.1"
 	},
 	"private": true,
+	"packageManager": "pnpm@9.15.0",
 	"scripts": {
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
 		"deploy": "wrangler deploy --minify",
 		"dev": "wrangler dev",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"lint": "npm run typecheck && npm run format:check && eslint .",
+		"lint": "pnpm run typecheck && pnpm run format:check && eslint .",
 		"lint:fix": "prettier --write . && eslint . --fix",
 		"test": "vitest run",
 		"test:client": "tsx test-client.ts",

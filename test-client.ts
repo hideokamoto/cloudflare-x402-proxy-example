@@ -20,7 +20,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
 if (!PRIVATE_KEY) {
 	console.error("❌ Error: PRIVATE_KEY environment variable is required");
 	console.log("\nUsage:");
-	console.log("  PRIVATE_KEY=0x... npm run test:client");
+	console.log("  PRIVATE_KEY=0x... pnpm run test:client");
 	process.exit(1);
 }
 

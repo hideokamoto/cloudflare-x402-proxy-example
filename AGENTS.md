@@ -250,7 +250,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" | npx w
 ### Step 9: Deploy
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 ---
@@ -604,7 +604,7 @@ Use `npx wrangler tail` to see bot scores in logs after deployment.
 ```bash
 cp .dev.vars.example .dev.vars
 node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(32).toString('hex'))" >> .dev.vars
-npm run dev
+pnpm run dev
 
 curl http://localhost:8787/__x402/health      # Should return 200
 curl http://localhost:8787/__x402/protected   # Should return 402
@@ -616,7 +616,7 @@ curl http://localhost:8787/__x402/protected   # Should return 402
 
 ## Pre-Deploy Checklist
 
-Before running `npm run deploy`, verify:
+Before running `pnpm run deploy`, verify:
 
 - [ ] `account_id` set in wrangler.jsonc (required if user has multiple Cloudflare accounts)
 - [ ] `assets` configuration commented out or removed (required when proxying to an origin)
