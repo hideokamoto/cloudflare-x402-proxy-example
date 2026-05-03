@@ -2,6 +2,8 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/x402-proxy-template)
 
+> **Upstream template:** Canonical source is **[`cloudflare/templates` → `x402-proxy-template`](https://github.com/cloudflare/templates/tree/main/x402-proxy-template)** on GitHub. **This fork / derivative** layers on top of it—e.g. **Workers Static Assets** (`public/`, **`ASSETS`**) so you can try **local `wrangler dev`** and **`workers.dev`** without a DNS origin, **`requestForAssetFetch`** for clients like **`purl`**, and the guides under **[`docs/`](docs/)**. Compare with **`main`** there when merging or syncing.
+
 A Cloudflare Worker that acts as a transparent proxy with payment-gated access using the [x402 protocol](https://x402.org) and stateless cookie-based authentication.
 
 **Live Demo (Cloudflare-hosted)** — built-in diagnostics only; no custom DNS origin behind that Worker:
