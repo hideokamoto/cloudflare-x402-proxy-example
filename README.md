@@ -101,9 +101,10 @@ pnpm run dev
 
 Visit `http://localhost:8787`:
 
-- **`/__x402/health`** — public JSON health check  
-- **`/__x402/protected`** — built-in paid test route (expects **402** without payment)  
-- **`/premium/1`** — matches **`/premium/*`** in `wrangler.jsonc`; expects **402** until you pay or hold a valid cookie; after payment it serves **`public/premium/1/index.html`** when **`ASSETS`** is configured  
+- **`/__x402/health`** — public JSON health check
+- **`/__x402/protected`** — built-in paid test route (expects **402** without payment)
+- **`/premium/1`** — matches **`/premium/*`** in `wrangler.jsonc`; expects **402** until you pay or hold a valid cookie; after payment it serves **`public/premium/1/index.html`** when **`ASSETS`** is configured
+- **`/browser-test/`** — browser harness: **402 → sign / paste `X-PAYMENT` → cookie session** (uses [esm.sh](https://esm.sh) to load `viem` + `x402/client` in the page; requires a working internet connection on first load)
 
 ### 2. End-to-end with `purl` (recommended)
 
@@ -121,7 +122,17 @@ The password prompt is for **your local `purl` wallet keystore**, not `JWT_SECRE
 - **[`docs/LOCAL_PURL_WALKTHROUGH.md`](docs/LOCAL_PURL_WALKTHROUGH.md)** — step-by-step from `git clone` through `purl` (Japanese; includes mechanical checks for `ASSETS`, `requestForAssetFetch`, and `public/premium/1`)
 - **[`docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md`](docs/BLOG_CLOUDFLARE_WORKERS_DEPLOY.md)** — short **deploy** walkthrough: `wrangler secret put JWT_SECRET`, `pnpm run deploy`, `workers.dev`, and `purl` against a live URL (English)
 
-### 3. Deploy to Cloudflare Workers (`workers.dev`)
+### 3. Browser test UI (`/browser-test/`)
+
+1. Start the dev server (`pnpm run dev`) and open **`http://localhost:8787/browser-test/`** (or **`https://<your-worker>.<account>.workers.dev/browser-test/`** after deploy).
+2. Ensure **`NETWORK`** in [`wrangler.jsonc`](wrangler.jsonc) matches the wallet network you select on the page (`base-sepolia` vs `base`).
+3. **Injected wallet path:** click **1 → 2 → 3 → 4**. Step 2 uses MetaMask (or any `window.ethereum` provider) and loads `viem` + `x402/client` from **esm.sh** to build `X-PAYMENT`.
+4. **Manual header path:** paste an `X-PAYMENT` value (e.g. from `pnpm run test:client` / another tool) and run **3 → 4**. Step 1 can be skipped if the header matches the current resource.
+5. The auth cookie is **HttpOnly**—if **4** returns **200** without `X-PAYMENT`, the session cookie is working.
+
+**Caveats:** Third-party module hosting (esm.sh) is convenient for a template demo but may be blocked offline or by strict CSP; for production UX, vendor/bundle the client SDK instead.
+
+### 4. Deploy to Cloudflare Workers (`workers.dev`)
 
 ```bash
 npx wrangler login
@@ -319,15 +330,15 @@ The server will be available at `http://localhost:8787`
 
 **Most commonly used:**
 
-| Command          | Description                    |
-| ---------------- | ------------------------------ |
+| Command           | Description                    |
+| ----------------- | ------------------------------ |
 | `pnpm run dev`    | Start local development server |
 | `pnpm run deploy` | Deploy to Cloudflare Workers   |
 
 **Other scripts:**
 
-| Command                | Description                                  |
-| ---------------------- | -------------------------------------------- |
+| Command                 | Description                                  |
+| ----------------------- | -------------------------------------------- |
 | `pnpm run cf-typegen`   | Generate TypeScript types from Worker config |
 | `pnpm run typecheck`    | Run TypeScript type checking                 |
 | `pnpm run format`       | Format code with Prettier                    |
@@ -415,6 +426,10 @@ curl https://your-worker.dev/premium -H "Cookie: auth_token=..."
 
 ## Testing
 
+### Browser test UI (`/browser-test/`)
+
+See **Quick Start → §3 Browser test UI** for the full flow. Prefer **`purl`** or **`pnpm run test:client`** in CI or air‑gapped environments; the browser page depends on **esm.sh**/CDN to load `viem` and `x402/client`.
+
 ### Trying the flow with `purl`
 
 The [**`purl` CLI**](https://docs.cdp.coinbase.com/x402/) signs and retries requests automatically when it receives **HTTP 402** from this Worker.
@@ -485,6 +500,8 @@ curl -v http://localhost:8787/__x402/protected
 │   └── jwt.ts            # JWT utilities (sign/verify)
 ├── public/
 │   ├── index.html        # Landing / static assets for demos
+│   ├── browser-test/
+│   │   └── index.html    # Browser harness for x402 + cookie flow
 │   └── premium/
 │       └── 1/
 │           └── index.html   # Matches /premium/* after payment when ASSETS is bound

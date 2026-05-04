@@ -20,6 +20,34 @@ Before testing, you need:
    pnpm run dev
    ```
 
+## Browser test UI (`/browser-test/`)
+
+The static page at **`/browser-test/`** reproduces the same high-level checks as `test-client.ts`, but in the browser:
+
+1. **Step 1** — `GET` the protected URL with `credentials: 'include'` and assert **402**.
+2. **Step 2** — Build `X-PAYMENT` via an injected EVM wallet (`window.ethereum`) using `viem` + `x402/client`, or skip and paste a header manually.
+3. **Step 3** — Retry with the `X-PAYMENT` header; expect **2xx** and (usually) a `Set-Cookie` for `auth_token`.
+4. **Step 4** — `GET` again without `X-PAYMENT`; if the **HttpOnly** cookie is stored, the request should **not** return **402**.
+
+### When to use which tool
+
+| Tool                       | Best for                                                                  |
+| -------------------------- | ------------------------------------------------------------------------- |
+| **`pnpm run test:client`** | Scripted/local verification; full control with a test private key         |
+| **`purl`**                 | CLI end-to-end with a managed keystore                                    |
+| **`/browser-test/`**       | Quick manual checks in a real browser wallet; optional pasted `X-PAYMENT` |
+
+### Prerequisites
+
+- Worker running (`pnpm run dev`) or deployed URL
+- Wallet funded on the same network as `NETWORK` in `wrangler.jsonc` (test **USDC** + gas on **Base Sepolia** for the default template)
+- **CDN access:** the page loads `viem` and `x402/client` from **esm.sh**. Offline or strict networks may fail at Step 2.
+
+### Manual `X-PAYMENT` troubleshooting
+
+- The pasted header must match the **same resource** and **402** payload you are hitting (amount, `payTo`, network).
+- If Step 4 still returns **402**, the browser may not be storing the cookie: verify you are on **HTTPS** in production (`Secure` cookies), stay on the **same origin** as Step 3, and confirm `JWT_SECRET` is set for the Worker.
+
 ## Automated Testing
 
 The easiest way to test is using the provided test client script:

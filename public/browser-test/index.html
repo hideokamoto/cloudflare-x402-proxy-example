@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>x402 ブラウザ検証</title>
+		<style>
+			:root {
+				--fg: #7c2d12;
+				--accent: #f97316;
+				--border: #f97316;
+				--bg: #fff;
+				--muted: #9a3412;
+				--panel: #fff7ed;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				font-family:
+					system-ui,
+					-apple-system,
+					"Segoe UI",
+					sans-serif;
+				margin: 0;
+				padding: 1.5rem;
+				color: var(--fg);
+				background: var(--bg);
+				line-height: 1.5;
+			}
+			h1 {
+				font-size: 1.5rem;
+				margin: 0 0 0.5rem;
+			}
+			.lead {
+				color: var(--muted);
+				margin: 0 0 1.25rem;
+				max-width: 52rem;
+			}
+			fieldset {
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 1rem 1.25rem;
+				margin: 0 0 1rem;
+				background: var(--panel);
+			}
+			legend {
+				font-weight: 700;
+				padding: 0 0.35rem;
+			}
+			label {
+				display: block;
+				font-weight: 600;
+				font-size: 0.9rem;
+				margin-top: 0.75rem;
+			}
+			label:first-of-type {
+				margin-top: 0;
+			}
+			input[type="text"],
+			select,
+			textarea {
+				width: 100%;
+				max-width: 40rem;
+				margin-top: 0.35rem;
+				padding: 0.45rem 0.6rem;
+				border: 1px solid var(--border);
+				border-radius: 6px;
+				font: inherit;
+			}
+			textarea {
+				min-height: 6rem;
+				font-family: ui-monospace, monospace;
+				font-size: 0.85rem;
+			}
+			.row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				align-items: center;
+				margin-top: 0.75rem;
+			}
+			button {
+				cursor: pointer;
+				font: inherit;
+				font-weight: 600;
+				border-radius: 999px;
+				padding: 0.55rem 1.1rem;
+				border: 2px solid var(--accent);
+				background: var(--accent);
+				color: #fff;
+			}
+			button.secondary {
+				background: #fff;
+				color: var(--accent);
+			}
+			button:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+			}
+			#log {
+				width: 100%;
+				max-width: 52rem;
+				min-height: 14rem;
+				margin: 0;
+				padding: 0.75rem;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				background: #1c1917;
+				color: #e7e5e4;
+				font-size: 0.8rem;
+				white-space: pre-wrap;
+				word-break: break-word;
+			}
+			.note {
+				font-size: 0.85rem;
+				color: var(--muted);
+				max-width: 52rem;
+				margin-top: 0.35rem;
+			}
+			.back {
+				margin-bottom: 1rem;
+			}
+			.back a {
+				color: var(--accent);
+				font-weight: 600;
+				text-decoration: none;
+			}
+			.back a:hover {
+				text-decoration: underline;
+			}
+			.status-pill {
+				display: inline-block;
+				padding: 0.15rem 0.5rem;
+				border-radius: 999px;
+				font-size: 0.75rem;
+				font-weight: 700;
+				background: var(--panel);
+				border: 1px solid var(--border);
+				margin-left: 0.35rem;
+			}
+		</style>
+	</head>
+	<body>
+		<p class="back"><a href="/">← トップに戻る</a></p>
+		<h1>x402 ブラウザ検証 <span id="pill" class="status-pill">待機</span></h1>
+		<p class="lead">
+			課金プロキシのフローをブラウザで確認します。ステップ1で
+			<strong>402</strong> を取得し、Injected Wallet（MetaMask
+			等）で支払いヘッダーを作成するか、
+			<code>X-PAYMENT</code> を手入力してから再リクエストします。認証 Cookie は
+			<strong>HttpOnly</strong> のため JavaScript
+			からは読めません。ステップ4が成功すれば Cookie が有効です。
+		</p>
+
+		<fieldset>
+			<legend>接続設定</legend>
+			<label for="baseUrl">ベース URL（通常はこのページのオリジン）</label>
+			<input id="baseUrl" type="text" autocomplete="off" />
+
+			<label for="path">保護パス（例: <code>/premium/1</code>）</label>
+			<input id="path" type="text" value="/premium/1" autocomplete="off" />
+
+			<label for="network"
+				>NETWORK（Worker の <code>NETWORK</code> と一致させる）</label
+			>
+			<select id="network">
+				<option value="base-sepolia" selected>
+					base-sepolia（推奨・テスト）
+				</option>
+				<option value="base">base（本番）</option>
+			</select>
+
+			<p class="note">
+				テストネットではウォレットに Base Sepolia の ETH（ガス）とテスト USDC
+				が必要です。
+			</p>
+		</fieldset>
+
+		<fieldset>
+			<legend>手動モード（任意）</legend>
+			<label for="manualPayment"
+				><code>X-PAYMENT</code> をここに貼り付け（CLI / 別ツールで生成）</label
+			>
+			<textarea
+				id="manualPayment"
+				placeholder="Base64 など、サーバーが期待する X-PAYMENT 文字列"
+			></textarea>
+			<p class="note">
+				手入力する場合は「Injected Wallet
+				で署名」をスキップし、ステップ3から実行できます。
+			</p>
+		</fieldset>
+
+		<fieldset>
+			<legend>操作</legend>
+			<div class="row">
+				<button type="button" id="btnStep1">1. 未課金で取得（402 期待）</button>
+				<button type="button" id="btnStep2" class="secondary" disabled>
+					2. Injected Wallet で署名
+				</button>
+				<button type="button" id="btnStep3" disabled>
+					3. X-PAYMENT 付きで再試行
+				</button>
+				<button type="button" id="btnStep4" class="secondary" disabled>
+					4. Cookie のみで再試行
+				</button>
+				<button type="button" id="btnClear" class="secondary">ログ消去</button>
+			</div>
+		</fieldset>
+
+		<label for="log">ログ</label>
+		<pre id="log" aria-live="polite"></pre>
+
+		<script type="module">
+			import { createWalletClient, custom } from "https://esm.sh/viem@2.43.1";
+			import { base, baseSepolia } from "https://esm.sh/viem@2.43.1/chains";
+			import { createPaymentHeader } from "https://esm.sh/x402@1.0.1/client?deps=viem@2.43.1";
+
+			const BASE_SEPOLIA_HEX = "0x14a34";
+			const BASE_MAINNET_HEX = "0x2105";
+
+			const pill = document.getElementById("pill");
+			const baseUrlInput = document.getElementById("baseUrl");
+			const pathInput = document.getElementById("path");
+			const networkSelect = document.getElementById("network");
+			const manualPayment = document.getElementById("manualPayment");
+			const logEl = document.getElementById("log");
+			const btnStep1 = document.getElementById("btnStep1");
+			const btnStep2 = document.getElementById("btnStep2");
+			const btnStep3 = document.getElementById("btnStep3");
+			const btnStep4 = document.getElementById("btnStep4");
+			const btnClear = document.getElementById("btnClear");
+
+			baseUrlInput.value = `${window.location.origin}`;
+
+			/** @type {{ error: string; accepts: unknown[]; x402Version: number } | null} */
+			let lastX402 = null;
+			/** @type {string | null} */
+			let signedPaymentHeader = null;
+
+			function setPill(text) {
+				pill.textContent = text;
+			}
+
+			function log(...args) {
+				const line = args
+					.map((a) => (typeof a === "string" ? a : JSON.stringify(a, null, 2)))
+					.join(" ");
+				logEl.textContent += line + "\n";
+				logEl.scrollTop = logEl.scrollHeight;
+			}
+
+			function targetUrl() {
+				const base = baseUrlInput.value.replace(/\/$/, "");
+				const raw = pathInput.value.trim();
+				const path = raw.startsWith("/") ? raw : `/${raw}`;
+				return new URL(path, `${base}/`).toString();
+			}
+
+			function getChain() {
+				return networkSelect.value === "base" ? base : baseSepolia;
+			}
+
+			function getChainHex() {
+				return networkSelect.value === "base"
+					? BASE_MAINNET_HEX
+					: BASE_SEPOLIA_HEX;
+			}
+
+			async function addChainIfNeeded(ethereum, chain) {
+				const params =
+					chain.id === baseSepolia.id
+						? {
+								chainId: BASE_SEPOLIA_HEX,
+								chainName: "Base Sepolia",
+								nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+								rpcUrls: ["https://sepolia.base.org"],
+								blockExplorerUrls: ["https://sepolia.basescan.org"],
+							}
+						: {
+								chainId: BASE_MAINNET_HEX,
+								chainName: "Base",
+								nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+								rpcUrls: ["https://mainnet.base.org"],
+								blockExplorerUrls: ["https://basescan.org"],
+							};
+				await ethereum.request({
+					method: "wallet_addEthereumChain",
+					params: [params],
+				});
+			}
+
+			async function ensureChain(ethereum) {
+				const chain = getChain();
+				const hex = getChainHex();
+				try {
+					await ethereum.request({
+						method: "wallet_switchEthereumChain",
+						params: [{ chainId: hex }],
+					});
+				} catch (e) {
+					const code = /** @type {{ code?: number }} */ (e).code;
+					if (code === 4902) {
+						await addChainIfNeeded(ethereum, chain);
+						await ethereum.request({
+							method: "wallet_switchEthereumChain",
+							params: [{ chainId: hex }],
+						});
+					} else {
+						throw e;
+					}
+				}
+			}
+
+			function getSetCookieLines(res) {
+				if (typeof res.headers.getSetCookie === "function") {
+					return res.headers.getSetCookie();
+				}
+				const single = res.headers.get("set-cookie");
+				return single ? [single] : [];
+			}
+
+			function syncButtons() {
+				btnStep2.disabled = !lastX402;
+				const manual = manualPayment.value.trim();
+				btnStep3.disabled = !(signedPaymentHeader || manual.length > 0);
+			}
+
+			btnClear.addEventListener("click", () => {
+				logEl.textContent = "";
+				setPill("待機");
+			});
+
+			manualPayment.addEventListener("input", syncButtons);
+
+			btnStep1.addEventListener("click", async () => {
+				setPill("実行中…");
+				lastX402 = null;
+				signedPaymentHeader = null;
+				manualPayment.value = "";
+				syncButtons();
+				const url = targetUrl();
+				log(`[Step 1] GET ${url} (credentials: include)`);
+				try {
+					const res = await fetch(url, {
+						credentials: "include",
+						cache: "no-store",
+					});
+					log(`[Step 1] status: ${res.status} ${res.statusText}`);
+					if (res.status !== 402) {
+						const t = await res.text();
+						log("[Step 1] body:", t.slice(0, 2000));
+						throw new Error(`402 を期待しましたが ${res.status} でした`);
+					}
+					const body = await res.json();
+					lastX402 = body;
+					log("[Step 1] 402 本文（要約）:", {
+						x402Version: body.x402Version,
+						accepts0: body.accepts?.[0],
+					});
+					setPill("402 取得済");
+				} catch (e) {
+					log(
+						"[Step 1] エラー:",
+						String(/** @type {Error} */ (e).message || e)
+					);
+					setPill("失敗");
+					lastX402 = null;
+				}
+				syncButtons();
+			});
+
+			btnStep2.addEventListener("click", async () => {
+				if (!lastX402) {
+					log("[Step 2] 先にステップ1を実行してください");
+					return;
+				}
+				const ethereum = window.ethereum;
+				if (!ethereum) {
+					log(
+						"[Step 2] window.ethereum がありません（Injected Wallet をインストール）"
+					);
+					return;
+				}
+				setPill("署名中…");
+				try {
+					const accounts = await ethereum.request({
+						method: "eth_requestAccounts",
+					});
+					const address = accounts[0];
+					if (!address) throw new Error("アカウントが取得できませんでした");
+
+					await ensureChain(ethereum);
+
+					const chain = getChain();
+					const walletClient = createWalletClient({
+						account: /** @type {`0x${string}`} */ (address),
+						chain,
+						transport: custom(ethereum),
+					});
+
+					const requirement = lastX402.accepts[0];
+					if (!requirement) throw new Error("accepts[0] がありません");
+
+					log("[Step 2] 署名要求（ウォレットのプロンプトに従ってください）…");
+					const header = await createPaymentHeader(
+						walletClient,
+						lastX402.x402Version,
+						/** @type {any} */ (requirement)
+					);
+					signedPaymentHeader = header;
+					log(
+						"[Step 2] X-PAYMENT 生成完了（先頭 48 文字）:",
+						header.slice(0, 48) + "…"
+					);
+					setPill("署名済");
+				} catch (e) {
+					log(
+						"[Step 2] エラー:",
+						String(/** @type {Error} */ (e).message || e)
+					);
+					setPill("失敗");
+					signedPaymentHeader = null;
+				}
+				syncButtons();
+			});
+
+			btnStep3.addEventListener("click", async () => {
+				const header = signedPaymentHeader || manualPayment.value.trim();
+				if (!header) {
+					log("[Step 3] X-PAYMENT がありません（ステップ2または手入力）");
+					return;
+				}
+				const url = targetUrl();
+				setPill("支払いリクエスト中…");
+				log(`[Step 3] GET ${url} with X-PAYMENT`);
+				try {
+					const res = await fetch(url, {
+						credentials: "include",
+						cache: "no-store",
+						headers: { "X-PAYMENT": header },
+					});
+					log(`[Step 3] status: ${res.status} ${res.statusText}`);
+					const text = await res.text();
+					log("[Step 3] body（先頭 2000 文字）:", text.slice(0, 2000));
+					if (!res.ok)
+						throw new Error(
+							`支払い後の応答が OK ではありません (${res.status})`
+						);
+					const setCookie = getSetCookieLines(res);
+					const hasSetCookie = setCookie.length > 0;
+					log(
+						"[Step 3] Set-Cookie ヘッダ:",
+						hasSetCookie
+							? "あり（HttpOnly の可能性あり）"
+							: "なし（サーバー設定を確認）"
+					);
+					setPill("支払い成功");
+					btnStep4.disabled = false;
+				} catch (e) {
+					log(
+						"[Step 3] エラー:",
+						String(/** @type {Error} */ (e).message || e)
+					);
+					setPill("失敗");
+					btnStep4.disabled = true;
+				}
+			});
+
+			btnStep4.addEventListener("click", async () => {
+				const url = targetUrl();
+				setPill("Cookie 確認中…");
+				log(`[Step 4] GET ${url}（X-PAYMENT なし、credentials: include）`);
+				try {
+					const res = await fetch(url, {
+						credentials: "include",
+						cache: "no-store",
+					});
+					log(`[Step 4] status: ${res.status} ${res.statusText}`);
+					const text = await res.text();
+					log("[Step 4] body（先頭 2000 文字）:", text.slice(0, 2000));
+					if (res.status === 402) {
+						throw new Error(
+							"まだ 402 です。Cookie が保存されていないか、別オリジン/シークレット設定を確認してください。"
+						);
+					}
+					if (!res.ok) throw new Error(`期待外のステータス: ${res.status}`);
+					setPill("Cookie OK");
+					log("[Step 4] Cookie セッションでアクセスできました。");
+				} catch (e) {
+					log(
+						"[Step 4] エラー:",
+						String(/** @type {Error} */ (e).message || e)
+					);
+					setPill("失敗");
+				}
+			});
+
+			log(
+				"準備完了。ステップ1から順に実行するか、X-PAYMENT を貼ってステップ3へ進んでください。"
+			);
+			syncButtons();
+		</script>
+	</body>
+</html>
