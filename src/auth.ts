@@ -5,8 +5,12 @@
 import { Context, Next, MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import { verifyJWT } from "./jwt";
-import { paymentMiddleware } from "x402-hono";
-import type { AppContext } from "./env";
+import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import type { FacilitatorClient } from "@x402/core/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import type { Network, SupportedResponse } from "@x402/core/types";
+import type { AppContext, Env } from "./env";
 
 /**
  * Creates a combined middleware that checks for valid cookie authentication
@@ -68,43 +72,106 @@ export interface ProtectedRouteConfig {
 }
 
 /**
+ * Facilitator wrapper that delegates verify/settle to the real HTTP facilitator
+ * but falls back to a locally-declared supported-kinds response if the
+ * facilitator's `getSupported` endpoint is unreachable (e.g., in tests, or
+ * during a transient facilitator outage). ExactEvmScheme.enhancePaymentRequirements
+ * does not consume `supportedKind.extra`, so a minimal kind entry is enough to
+ * let the resource server build a 402 response and accept payments.
+ */
+class ResilientFacilitator implements FacilitatorClient {
+	constructor(
+		private readonly inner: HTTPFacilitatorClient,
+		private readonly fallback: SupportedResponse
+	) {}
+
+	verify(
+		...args: Parameters<FacilitatorClient["verify"]>
+	): ReturnType<FacilitatorClient["verify"]> {
+		return this.inner.verify(...args);
+	}
+
+	settle(
+		...args: Parameters<FacilitatorClient["settle"]>
+	): ReturnType<FacilitatorClient["settle"]> {
+		return this.inner.settle(...args);
+	}
+
+	async getSupported(): Promise<SupportedResponse> {
+		try {
+			return await this.inner.getSupported();
+		} catch (err) {
+			console.warn(
+				"Facilitator getSupported failed; falling back to declared kinds.",
+				err
+			);
+			return this.fallback;
+		}
+	}
+}
+
+// Module-scoped cache so the facilitator sync runs once per Worker isolate,
+// not on every request. Keyed by the env values that affect payment construction
+// plus the route pattern.
+const middlewareCache = new Map<string, MiddlewareHandler>();
+
+function buildMiddleware(env: Env, config: ProtectedRouteConfig) {
+	const facilitatorUrl = env.FACILITATOR_URL || "https://x402.org/facilitator";
+	const network = env.NETWORK as Network;
+	const payTo = env.PAY_TO as `0x${string}`;
+
+	const cacheKey = [
+		facilitatorUrl,
+		network,
+		payTo,
+		config.pattern,
+		config.price,
+		config.description,
+	].join("|");
+
+	const cached = middlewareCache.get(cacheKey);
+	if (cached) return cached;
+
+	const innerClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+	const facilitatorClient = new ResilientFacilitator(innerClient, {
+		kinds: [{ x402Version: 2, scheme: "exact", network }],
+		extensions: [],
+		signers: {},
+	});
+
+	const resourceServer = new x402ResourceServer(facilitatorClient).register(
+		network,
+		new ExactEvmScheme()
+	);
+
+	const mw = paymentMiddleware(
+		{
+			[config.pattern]: {
+				accepts: {
+					scheme: "exact",
+					price: config.price,
+					network,
+					payTo,
+				},
+				description: config.description,
+			},
+		},
+		resourceServer
+	);
+
+	middlewareCache.set(cacheKey, mw);
+	return mw;
+}
+
+/**
  * Creates middleware for a protected route that requires payment OR valid cookie
- * This dynamically creates payment middleware at request time to access environment variables
- * The route path is automatically determined from the request context
  *
  * @param config - Payment configuration
  * @returns Middleware that enforces payment or cookie authentication
  */
 export function createProtectedRoute(config: ProtectedRouteConfig) {
 	return async (c: Context<AppContext>, next: Next) => {
-		// Get the route path from the request context
-		// Normalize the path by removing trailing slashes (except for root "/")
-		// This matches how x402's findMatchingRoute normalizes incoming request paths
-		const rawPath = c.req.path;
-		const routePath =
-			rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
-
-		// Create payment middleware dynamically with config from env
-		// Facilitator is optional - x402 uses its own default when not provided
-		const facilitator = c.env.FACILITATOR_URL
-			? { url: c.env.FACILITATOR_URL }
-			: undefined;
-
-		const paymentMw = paymentMiddleware(
-			c.env.PAY_TO as `0x${string}`,
-			{
-				[routePath]: {
-					price: config.price,
-					network: c.env.NETWORK,
-					config: {
-						description: config.description,
-					},
-				},
-			},
-			facilitator
-		);
-
-		// Apply the combined auth/payment middleware
+		const paymentMw = buildMiddleware(c.env, config);
 		return await requirePaymentOrCookie(paymentMw)(c, next);
 	};
 }

@@ -8,10 +8,7 @@
 		"lib": ["ESNext"],
 		"jsx": "react-jsx",
 		"jsxImportSource": "hono/jsx",
-		"types": [
-			"./worker-configuration.d.ts",
-			"@cloudflare/vitest-pool-workers"
-		]
+		"types": ["./worker-configuration.d.ts", "@cloudflare/vitest-pool-workers"]
 	},
 	"include": [
 		"src/**/*",

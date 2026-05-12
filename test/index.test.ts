@@ -20,7 +20,7 @@ describe("x402-proxy Worker", () => {
 			protectedPatterns: Array<{ pattern: string }>;
 			botManagementFiltering: boolean;
 		};
-		expect(body.network).toBe("base-sepolia");
+		expect(body.network).toBe("eip155:84532");
 		expect(Array.isArray(body.protectedPatterns)).toBe(true);
 		expect(
 			body.protectedPatterns.some(({ pattern }) => pattern === "/premium/*")

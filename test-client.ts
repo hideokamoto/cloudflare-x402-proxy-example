@@ -1,17 +1,18 @@
+/// <reference types="node" />
 /**
- * Test client for x402 payment flow
+ * Test client for x402 payment flow (x402 v2)
  *
  * This script tests the complete payment and cookie flow:
  * 1. Requests the protected endpoint without payment (should get 402)
- * 2. Creates and signs a payment
+ * 2. Creates and signs a payment using @x402/core + @x402/evm
  * 3. Retries the request with the payment
  * 4. Saves the cookie
  * 5. Tests access with the cookie (no payment needed)
  */
 
-import { type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createPaymentHeader } from "x402/client";
+import { x402Client, x402HTTPClient } from "@x402/core/client";
+import { registerExactEvmScheme } from "@x402/evm/exact/client";
 
 // Configuration
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:8787";
@@ -24,28 +25,18 @@ if (!PRIVATE_KEY) {
 	process.exit(1);
 }
 
-interface PaymentRequirement {
-	scheme: string;
-	network: string;
-	maxAmountRequired: string;
-	resource: string;
-	description: string;
-	mimeType: string;
-	maxTimeoutSeconds: number;
-	payTo: Address;
-	asset: string;
-}
-
-interface X402Response {
-	error: string;
-	accepts: PaymentRequirement[];
-	x402Version: number;
-}
-
 async function main() {
-	console.log("🧪 Testing x402 Payment Flow\n");
+	console.log("🧪 Testing x402 Payment Flow (v2)\n");
 	console.log(`Server: ${SERVER_URL}`);
-	console.log(`Network: Base Sepolia (testnet)\n`);
+	console.log(`Network: Base Sepolia (eip155:84532)\n`);
+
+	// Set up x402 v2 HTTP client with EVM exact scheme support
+	const account = privateKeyToAccount(PRIVATE_KEY);
+	const baseClient = new x402Client();
+	registerExactEvmScheme(baseClient, { signer: account });
+	const httpClient = new x402HTTPClient(baseClient);
+
+	console.log(`   Wallet: ${account.address}\n`);
 
 	// Step 1: Request without payment (should get 402)
 	console.log("📝 Step 1: Requesting /premium without payment...");
@@ -56,43 +47,31 @@ async function main() {
 		process.exit(1);
 	}
 
-	const paymentInfo: X402Response = await initialResponse.json();
+	const initialBody = await initialResponse.clone().json();
+	const paymentRequired = httpClient.getPaymentRequiredResponse(
+		(name) => initialResponse.headers.get(name),
+		initialBody
+	);
+
 	console.log("✅ Received 402 Payment Required");
-	console.log(
-		`   Payment needed: ${paymentInfo.accepts[0]?.maxAmountRequired}`
-	);
-	console.log(`   Description: ${paymentInfo.accepts[0]?.description}\n`);
+	const firstRequirement = paymentRequired.accepts[0];
+	console.log(`   Payment needed: ${firstRequirement?.amount}`);
+	console.log(`   Network: ${firstRequirement?.network}\n`);
 
-	// Step 2: Set up wallet and create payment
+	// Step 2: Create and sign payment payload via x402 v2 client
 	console.log("💰 Step 2: Creating and signing payment...");
-
-	const account = privateKeyToAccount(PRIVATE_KEY);
-	console.log(`   Wallet: ${account.address}`);
-
-	const requirement = paymentInfo.accepts[0];
-	if (!requirement) {
-		console.error("❌ No payment requirements found");
-		process.exit(1);
-	}
-
-	// Create payment using x402 SDK
-	const paymentHeader = await createPaymentHeader(
-		account,
-		paymentInfo.x402Version,
-		requirement as Parameters<typeof createPaymentHeader>[2]
-	);
-
+	const paymentPayload = await httpClient.createPaymentPayload(paymentRequired);
+	const paymentHeaders =
+		httpClient.encodePaymentSignatureHeader(paymentPayload);
 	console.log("✅ Payment signed");
-	console.log(`   Amount: ${requirement.maxAmountRequired}`);
-	console.log(`   Recipient: ${requirement.payTo}\n`);
+	console.log(`   Amount: ${firstRequirement?.amount}`);
+	console.log(`   Recipient: ${firstRequirement?.payTo}\n`);
 
 	// Step 3: Retry request with payment
 	console.log("📤 Step 3: Sending request with payment...");
 
 	const paidResponse = await fetch(`${SERVER_URL}/premium`, {
-		headers: {
-			"X-PAYMENT": paymentHeader,
-		},
+		headers: paymentHeaders,
 	});
 
 	if (!paidResponse.ok) {

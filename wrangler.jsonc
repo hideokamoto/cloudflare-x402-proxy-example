@@ -57,13 +57,14 @@
 		// =====================================================================
 		// NETWORK - Blockchain network for payments (REQUIRED)
 		// =====================================================================
-		// Use "base-sepolia" for testing (free testnet tokens).
-		// Use "base" for production.
+		// CAIP-2 network identifier (x402 v2 format).
+		// Use "eip155:84532" for Base Sepolia (testing, free testnet tokens).
+		// Use "eip155:8453"  for Base mainnet (production).
 		//
 		// Get testnet tokens: https://docs.cdp.coinbase.com/faucets/
 		// Supported networks: https://x402.org
 		//
-		"NETWORK": "base-sepolia",
+		"NETWORK": "eip155:84532",
 		// =====================================================================
 		// PROTECTED_PATTERNS - Routes requiring payment (REQUIRED)
 		// =====================================================================

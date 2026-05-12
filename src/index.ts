@@ -200,7 +200,7 @@ app.use("*", async (c, next) => {
 		}
 
 		// Check if the payment middleware set an error response (e.g., settlement failed)
-		// The x402-hono middleware sets c.res to a 402 if settlement fails, even though
+		// The @x402/hono middleware sets c.res to a 402 if settlement fails, even though
 		// it doesn't return a Response object. We must check c.res status and discard
 		// the JWT token if payment didn't fully complete.
 		if (c.res && c.res.status >= 400) {
