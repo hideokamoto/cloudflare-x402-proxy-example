@@ -351,6 +351,11 @@
 					if (res.status !== 402) {
 						const t = await res.text();
 						log("[Step 1] body:", t.slice(0, 2000));
+						if (res.status === 200) {
+							log("[Step 1] Existing auth cookie detected — clear site data or use an incognito window to retry");
+							setPill("既存Cookie検出");
+							return;
+						}
 						throw new Error(`402 を期待しましたが ${res.status} でした`);
 					}
 					const body = await res.json();
@@ -427,7 +432,8 @@
 			});
 
 			btnStep3.addEventListener("click", async () => {
-				const header = signedPaymentHeader || manualPayment.value.trim();
+				const manual = manualPayment.value.trim();
+				const header = manual || signedPaymentHeader;
 				if (!header) {
 					log("[Step 3] X-PAYMENT がありません（ステップ2または手入力）");
 					return;
